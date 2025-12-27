@@ -1,0 +1,17 @@
+# # Data - Ignore all content but keep structure via .gitkeep
+# data/**
+# !data/**/
+# !data/**/.gitkeep
+
+# # Python
+# **/__pycache__/
+# *.py[cod]
+# *$py.class
+
+# # Virtual environment
+# .venv/
+# venv/
+# ENV/
+
+# # FastF1
+# fastf1_http_cache.sqlite
