@@ -15,6 +15,19 @@ class TrackMap:
         for drv, meta in driver_metadata.items():
             self.map_labels[drv] = arcade.Text(str(meta.abb), 0, 0, WHITE, 8)
 
+    def get_driver_at_pos(self, x, y, current_frame):
+        """Returns the driver abbreviation if the mouse x,y hits a driver dot."""
+        CLICK_RADIUS = 10
+        for drv, telemetry in current_frame.drivers.items():
+            if drv not in self.driver_metadata: continue
+            
+            mx, my = self.map_to_box(telemetry.x, telemetry.y)
+            
+            # Simple distance check
+            if (x - mx)**2 + (y - my)**2 <= CLICK_RADIUS**2:
+                return drv
+        return None
+
     def map_to_box(self, x, y):
         """Scales raw F1 coordinates to fit inside the map box."""
         if self.max_x == self.min_x: nx = 0.5

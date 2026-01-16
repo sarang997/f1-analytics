@@ -28,6 +28,13 @@ SEEK_BAR_HEIGHT = 10
 SEEK_BAR_X = 350
 SEEK_BAR_Y = 50
 
+# Telemetry HUD
+HUD_WIDTH = 400
+HUD_HEIGHT = 200
+HUD_X = SCREEN_WIDTH - HUD_WIDTH - 20
+HUD_Y = 50 + 40 # Above seek bar
+HUD_BG_COLOR = (20, 20, 20, 200) # Slightly transparent
+
 # --- COLORS ---
 BG_COLOR = (15, 15, 15)
 PANEL_COLOR = (25, 25, 25)

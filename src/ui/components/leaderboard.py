@@ -9,6 +9,24 @@ class Leaderboard:
             self.lb_texts[drv] = arcade.Text("", 30, 0, WHITE, 12)
         
         self.header = arcade.Text("POS   DRIVER", 20, SCREEN_HEIGHT - 40, WHITE, 14, bold=True)
+        self.sorted_drivers = []
+
+    def get_driver_at_pos(self, x, y):
+        """Returns the driver abbreviation if the mouse x,y hits a leaderboard row."""
+        # Check X bounds
+        if x > LEADERBOARD_WIDTH: return None
+        
+        # Check Y bounds (iterate through cached rows)
+        if not self.sorted_drivers: return None
+        
+        for i, (drv, _) in enumerate(self.sorted_drivers):
+            y_pos = SCREEN_HEIGHT - 130 - (i * 30)
+            # Row height is 25, centered at y_pos + 5
+            # We widen the hit check to the full 30px stride to avoid gaps
+            center_y = y_pos + 5
+            if abs(y - center_y) < 15:
+                return drv
+        return None
 
     def draw(self, current_frame):
         # Draw Background
@@ -16,9 +34,9 @@ class Leaderboard:
         self.header.draw()
         
         active_drivers = current_frame.drivers.items()
-        sorted_drivers = sorted(active_drivers, key=lambda x: x[1].dist, reverse=True)
+        self.sorted_drivers = sorted(active_drivers, key=lambda x: x[1].dist, reverse=True)
         
-        for i, (drv, telemetry) in enumerate(sorted_drivers):
+        for i, (drv, telemetry) in enumerate(self.sorted_drivers):
             if drv not in self.lb_texts: continue
             meta = self.driver_metadata[drv]
             

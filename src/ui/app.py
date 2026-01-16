@@ -3,10 +3,14 @@ import time
 from src.utils.config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, BG_COLOR,
     SEEK_BAR_X, SEEK_BAR_Y, SEEK_BAR_WIDTH, SEEK_BAR_HEIGHT,
+    LEADERBOARD_WIDTH,
     WHITE, RED, ASH_GREY
 )
 from src.ui.components.leaderboard import Leaderboard
 from src.ui.components.track_map import TrackMap
+from src.ui.components.leaderboard import Leaderboard
+from src.ui.components.track_map import TrackMap
+from src.ui.components.telemetry_hud import TelemetryHUD
 from src.processor.data_manager import DataManager
 
 class F1Dashboard(arcade.Window):
@@ -42,8 +46,10 @@ class F1Dashboard(arcade.Window):
         # 3. Components
         self.leaderboard = Leaderboard(self.driver_metadata)
         self.track_map = TrackMap(self.driver_metadata, self.track_line, bounds)
+        self.telemetry_hud = TelemetryHUD(self.driver_metadata)
         
         # 4. Playback State
+        self.selected_driver = first_driver
         self._frame_index = 0.0
         self._frame_index_int = 0
         self.playback_speed = 1.0
@@ -65,6 +71,7 @@ class F1Dashboard(arcade.Window):
         # Draw Components
         self.leaderboard.draw(current_frame)
         self.track_map.draw(current_frame, self.show_blink)
+        self.telemetry_hud.draw(current_frame, self.selected_driver)
 
         # Draw Global HUD
         self.clock_text.text = f"TIME: {current_frame.t:.1f}s"
@@ -120,9 +127,20 @@ class F1Dashboard(arcade.Window):
         return progress * (len(self.frames) - 1)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # 1. Check Seek Bar
         if SEEK_BAR_X <= x <= SEEK_BAR_X + SEEK_BAR_WIDTH and SEEK_BAR_Y - 20 <= y <= SEEK_BAR_Y + 20:
             self.frame_index = self.get_frame_from_mouse(x)
+            return
 
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        if SEEK_BAR_X <= x <= SEEK_BAR_X + SEEK_BAR_WIDTH and SEEK_BAR_Y - 20 <= y <= SEEK_BAR_Y + 20:
-            self.frame_index = self.get_frame_from_mouse(x)
+        # 2. Check Track Map Click
+        current_frame = self.frames[self._frame_index_int]
+        clicked_driver = self.track_map.get_driver_at_pos(x, y, current_frame)
+        if clicked_driver:
+            self.selected_driver = clicked_driver
+            return
+
+        # 3. Check Leaderboard Click
+        if x <= LEADERBOARD_WIDTH:
+            clicked_driver = self.leaderboard.get_driver_at_pos(x, y)
+            if clicked_driver:
+                self.selected_driver = clicked_driver
