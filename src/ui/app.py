@@ -166,6 +166,12 @@ class F1Dashboard(arcade.Window):
             self.frame_index = self.get_frame_from_mouse(x)
             return
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        if SEEK_BAR_X <= x <= SEEK_BAR_X + SEEK_BAR_WIDTH and SEEK_BAR_Y - 20 <= y <= SEEK_BAR_Y + 20:
+            self.frame_index = self.get_frame_from_mouse(x)
+            self.paused = True # Pause when dragging for better UX
+            return
+
         # 2. Check Track Map Click
         current_frame = self.frames[self._frame_index_int]
         clicked_driver = self.track_map.get_driver_at_pos(x, y, current_frame)

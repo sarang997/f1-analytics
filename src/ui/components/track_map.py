@@ -14,6 +14,13 @@ class TrackMap:
         self.map_labels = {}
         for drv, meta in driver_metadata.items():
             self.map_labels[drv] = arcade.Text(str(meta.abb), 0, 0, WHITE, 8)
+            
+        self.scaled_track = []
+        self._cache_track()
+        
+    def _cache_track(self):
+        if self.track_line:
+            self.scaled_track = [self.map_to_box(p[0], p[1]) for p in self.track_line]
 
     def get_driver_at_pos(self, x, y, current_frame):
         """Returns the driver abbreviation if the mouse x,y hits a driver dot."""
@@ -57,9 +64,8 @@ class TrackMap:
 
         # Draw Circuit
         track_color = self.get_track_color(current_frame.status, show_blink)
-        if self.track_line:
-            scaled_track = [self.map_to_box(p[0], p[1]) for p in self.track_line]
-            arcade.draw_line_strip(scaled_track, track_color, 2)
+        if self.scaled_track:
+            arcade.draw_line_strip(self.scaled_track, track_color, 2)
 
         # Draw Cars
         for drv, telemetry in current_frame.drivers.items():
