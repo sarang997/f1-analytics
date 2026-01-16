@@ -1,0 +1,6 @@
+arcade
+fastf1
+pandas
+numpy
+scipy
+google-generativeai

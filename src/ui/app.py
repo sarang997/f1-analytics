@@ -11,6 +11,10 @@ from src.ui.components.track_map import TrackMap
 from src.ui.components.leaderboard import Leaderboard
 from src.ui.components.track_map import TrackMap
 from src.ui.components.telemetry_hud import TelemetryHUD
+from src.ui.components.race_control_log import RaceControlLog
+from src.ui.components.chat_window import ChatWindow
+from src.utils.ai_client import AIClient
+from src.utils.context_builder import build_race_context
 from src.processor.data_manager import DataManager
 
 class F1Dashboard(arcade.Window):
@@ -46,7 +50,15 @@ class F1Dashboard(arcade.Window):
         # 3. Components
         self.leaderboard = Leaderboard(self.driver_metadata)
         self.track_map = TrackMap(self.driver_metadata, self.track_line, bounds)
+        self.track_map = TrackMap(self.driver_metadata, self.track_line, bounds)
         self.telemetry_hud = TelemetryHUD(self.driver_metadata)
+        self.rc_log = RaceControlLog(self.data.race_control_messages)
+        
+        # AI Engineer
+        self.ai_client = AIClient()
+        self.chat_window = ChatWindow(self.ai_client)
+        # Verify bindings
+        self.chat_window.context_provider = self.get_current_context
         
         # 4. Playback State
         self.selected_driver = first_driver
@@ -71,7 +83,10 @@ class F1Dashboard(arcade.Window):
         # Draw Components
         self.leaderboard.draw(current_frame)
         self.track_map.draw(current_frame, self.show_blink)
+        self.track_map.draw(current_frame, self.show_blink)
         self.telemetry_hud.draw(current_frame, self.selected_driver)
+        self.rc_log.draw(current_frame.t)
+        self.chat_window.draw()
 
         # Draw Global HUD
         self.clock_text.text = f"TIME: {current_frame.t:.1f}s"
@@ -117,14 +132,33 @@ class F1Dashboard(arcade.Window):
         self._frame_index_int = int(self._frame_index)
 
     def on_key_press(self, key, modifiers):
+        # Delegate to Chat Window first
+        if self.chat_window.is_active:
+            self.chat_window.on_key_press(key, modifiers)
+            return
+
         if key == arcade.key.RIGHT: self.playback_speed += 1.0
         elif key == arcade.key.LEFT: self.playback_speed = max(0.0, self.playback_speed - 1.0)
         elif key == arcade.key.SPACE: self.paused = not self.paused
+        elif key == arcade.key.ENTER: 
+            # Activate chat
+            self.chat_window.on_key_press(key, modifiers)
+
+    def on_text(self, text):
+        self.chat_window.on_text(text)
 
     def get_frame_from_mouse(self, x):
         rel_x = x - SEEK_BAR_X
         progress = max(0.0, min(1.0, rel_x / SEEK_BAR_WIDTH))
         return progress * (len(self.frames) - 1)
+
+    def get_current_context(self):
+        """Builds context for the AI"""
+        current_frame = self.frames[self._frame_index_int]
+        # We need sorted drivers from leaderboard, but accessing it directly from LB component logic is messy
+        # Better to re-sort or rely on LB caching if public.
+        # Leaderboard exposes sorted_drivers.
+        return build_race_context(current_frame, self.driver_metadata, self.leaderboard.sorted_drivers)
 
     def on_mouse_press(self, x, y, button, modifiers):
         # 1. Check Seek Bar

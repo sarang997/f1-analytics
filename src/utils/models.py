@@ -12,6 +12,7 @@ class DriverFrame:
     drs: int
     dist: float
     lap: int
+    compound: str = "UNKNOWN"
 
 @dataclass
 class Frame:
@@ -32,3 +33,4 @@ class SessionData:
     driver_metadata: Dict[str, DriverMetadata]
     total_laps: int
     track_status_raw: List[dict]
+    race_control_messages: List[dict]

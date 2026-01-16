@@ -46,6 +46,15 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 DARK_GRAY = (64, 64, 64)
 
+COMPOUND_COLORS = {
+    "SOFT": (255, 0, 0),        # Red
+    "MEDIUM": (255, 255, 0),    # Yellow
+    "HARD": (255, 255, 255),    # White
+    "INTERMEDIATE": (0, 255, 0),# Green
+    "WET": (0, 0, 255),         # Blue
+    "UNKNOWN": (128, 128, 128)  # Grey
+}
+
 # --- TRACK STATUS MAPPING ---
 STATUS_NAMES = {
     1: "TRACK CLEAR",
