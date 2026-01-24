@@ -4,11 +4,11 @@ A high-performance telemetry replay dashboard for Formula 1 races, featuring an 
 
 ## Features
 
-- **Telemetry Replay:** Replay race data from any modern F1 session with millisecond precision.
+- **Multi-Tab Engineer Sidebar:** 
+  - **Engineer Tab:** AI-powered chat with personalized driver advice.
+  - **Race Feed:** Integrated live race control and incident logs.
+  - **Insights Tab:** Real-time telemetry analysis including **Tyre Age**, DRS status, and pace trends.
 - **Interactive Track Map:** Real-time car positions on a dynamic map. Click any car to follow its telemetry.
-- **Telemetry HUD:** Deep-dive into driver performance with speed, throttle, brake, RPM, and gear traces.
-- **Live Leaderboard:** Track positions, intervals, and lap times throughout the session.
-- **AI Race Engineer:** A context-aware chat assistant powered by Google Gemini that monitors race telemetry, identifies tire degradation, suggests strategy, and alerts you to proactive race events.
 
 ## Getting Started
 

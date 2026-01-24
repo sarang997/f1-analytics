@@ -59,8 +59,8 @@ class DataManager:
             telemetry = driver_laps.get_telemetry()
             if len(telemetry) == 0: continue
                 
-            # Accurately map LapNumber and Compound
-            lap_mapping = driver_laps[['Time', 'LapNumber', 'Compound']].rename(columns={'Time': 'SessionTime'})
+            # Accurately map LapNumber, Compound, and TyreLife
+            lap_mapping = driver_laps[['Time', 'LapNumber', 'Compound', 'TyreLife']].rename(columns={'Time': 'SessionTime'})
             telemetry = telemetry.sort_values('SessionTime')
             lap_mapping = lap_mapping.sort_values('SessionTime')
             
@@ -68,6 +68,7 @@ class DataManager:
             telemetry = pd.merge_asof(telemetry, lap_mapping, on='SessionTime', direction='forward')
             telemetry['LapNumber'] = telemetry['LapNumber'].ffill().bfill().fillna(1)
             telemetry['Compound'] = telemetry['Compound'].ffill().bfill().fillna("UNKNOWN")
+            telemetry['TyreLife'] = telemetry['TyreLife'].ffill().bfill().fillna(0)
                 
             telemetry['TimeSecs'] = telemetry['SessionTime'].dt.total_seconds()
             min_time = min(min_time, telemetry['TimeSecs'].min())
@@ -120,7 +121,8 @@ class DataManager:
                 'dist': interp1d(tel['TimeSecs'], tel['Distance'], kind='linear', fill_value="extrapolate"),
                 'lap': interp1d(tel['TimeSecs'], tel['LapNumber'], kind='nearest', fill_value="extrapolate"),
                 'drs': interp1d(tel['TimeSecs'], tel['DRS'], kind='nearest', fill_value="extrapolate"),
-                'compound': interp1d(tel['TimeSecs'], tel['CompoundInt'], kind='nearest', fill_value="extrapolate")
+                'compound': interp1d(tel['TimeSecs'], tel['CompoundInt'], kind='nearest', fill_value="extrapolate"),
+                'tyre_age': interp1d(tel['TimeSecs'], tel['TyreLife'], kind='nearest', fill_value="extrapolate")
             }
             
             driver_curves[drv] = {
@@ -134,6 +136,7 @@ class DataManager:
                 'lap': funcs['lap'](common_times).astype(int),
                 'drs': funcs['drs'](common_times).astype(int),
                 'compound': funcs['compound'](common_times).astype(int),
+                'tyre_age': funcs['tyre_age'](common_times).astype(int),
                 'inv_comp_map': data['inv_comp_map'],
                 't_min': t_min,
                 't_max': t_max
@@ -159,7 +162,8 @@ class DataManager:
                     drs=int(curves['drs'][i]),
                     dist=float(curves['dist'][i]),
                     lap=int(curves['lap'][i]),
-                    compound=str(comp_str)
+                    compound=str(comp_str),
+                    tyre_age=int(curves['tyre_age'][i])
                 )
                 max_lap = max(max_lap, frame_obj.drivers[drv].lap)
             

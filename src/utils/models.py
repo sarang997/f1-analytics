@@ -13,6 +13,7 @@ class DriverFrame:
     dist: float
     lap: int
     compound: str = "UNKNOWN"
+    tyre_age: int = 0
 
 @dataclass
 class Frame:

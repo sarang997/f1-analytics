@@ -10,7 +10,7 @@ from src.ui.components.leaderboard import Leaderboard
 from src.ui.components.track_map import TrackMap
 from src.ui.components.telemetry_hud import TelemetryHUD
 from src.ui.components.race_control_log import RaceControlLog
-from src.ui.components.chat_window import ChatWindow
+from src.ui.components.chat_window import EngineerSidebar
 from src.utils.ai_client import AIClient
 from src.utils.context_builder import build_race_context
 from src.utils.proactive_engineer import ProactiveEngineer
@@ -28,13 +28,17 @@ class F1Dashboard(arcade.Window):
         self.driver_metadata = self.data.driver_metadata
         self.total_laps = self.data.total_laps
         
-        # 2. Pre-process Track Layout (using logic from the old file)
+        # 2. Pre-process Track Layout (Downsampled for performance)
         first_driver = next(iter(self.driver_metadata))
-        self.track_line = []
+        raw_track = []
         for frame in self.frames:
             if first_driver in frame.drivers:
                 d = frame.drivers[first_driver]
-                self.track_line.append((d.x, d.y))
+                raw_track.append((d.x, d.y))
+        
+        # Downsample to ~1000 points
+        step = max(1, len(raw_track) // 1000)
+        self.track_line = raw_track[::step]
         
         # Bounds for map scaling
         all_x = []
@@ -54,12 +58,15 @@ class F1Dashboard(arcade.Window):
         
         # AI Engineer with Proactive Intelligence
         self.ai_client = AIClient()
-        self.chat_window = ChatWindow(self.ai_client)
+        self.sidebar = EngineerSidebar(self.ai_client)
         self.proactive_engineer = ProactiveEngineer()
         
-        # Wire up chat window
-        self.chat_window.context_provider = self.get_current_context
-        self.chat_window.selected_driver_name = None  # Will be updated each frame
+        # Wire up sidebar
+        self.sidebar.context_provider = self.get_current_context
+        self.sidebar.selected_driver_name = None  # Will be updated each frame
+        
+        # Sync feed messages
+        self.sidebar.feed_messages = self.data.race_control_messages
         
         # 4. Playback State
         self.selected_driver = first_driver
@@ -76,9 +83,10 @@ class F1Dashboard(arcade.Window):
         self.show_blink = True
         
         # 7. Global Text Objects
-        self.clock_text = arcade.Text("", 320, SCREEN_HEIGHT - 40, WHITE, 20, bold=True)
-        self.speed_text = arcade.Text("", 320, SCREEN_HEIGHT - 70, (255, 69, 0), 12) # RED_ORANGE
-        self.lap_text = arcade.Text("", 320, SCREEN_HEIGHT - 100, ASH_GREY, 14, bold=True)
+        base_x = LEADERBOARD_WIDTH + 40
+        self.clock_text = arcade.Text("", base_x, SCREEN_HEIGHT - 40, WHITE, 20, bold=True)
+        self.speed_text = arcade.Text("", base_x, SCREEN_HEIGHT - 70, (255, 69, 0), 12) # RED_ORANGE
+        self.lap_text = arcade.Text("", base_x, SCREEN_HEIGHT - 100, ASH_GREY, 14, bold=True)
 
     def on_draw(self):
         self.clear()
@@ -88,8 +96,8 @@ class F1Dashboard(arcade.Window):
         self.leaderboard.draw(current_frame)
         self.track_map.draw(current_frame, self.show_blink)
         self.telemetry_hud.draw(current_frame, self.selected_driver)
-        self.rc_log.draw(current_frame.t)
-        self.chat_window.draw()
+        # self.rc_log.draw(current_frame.t) # Removed in favor of Sidebar Feed
+        self.sidebar.draw(current_frame, self.selected_driver)
 
         # Draw Global HUD
         self.clock_text.text = f"TIME: {current_frame.t:.1f}s"
@@ -141,9 +149,9 @@ class F1Dashboard(arcade.Window):
         self._frame_index_int = int(self._frame_index)
 
     def on_key_press(self, key, modifiers):
-        # Delegate to Chat Window first
-        if self.chat_window.is_active:
-            self.chat_window.on_key_press(key, modifiers)
+        # Delegate to Sidebar first
+        if self.sidebar.is_active:
+            self.sidebar.on_key_press(key, modifiers)
             return
 
         if key == arcade.key.RIGHT: self.playback_speed += 1.0
@@ -151,10 +159,10 @@ class F1Dashboard(arcade.Window):
         elif key == arcade.key.SPACE: self.paused = not self.paused
         elif key == arcade.key.ENTER: 
             # Activate chat
-            self.chat_window.on_key_press(key, modifiers)
+            self.sidebar.on_key_press(key, modifiers)
 
     def on_text(self, text):
-        self.chat_window.on_text(text)
+        self.sidebar.on_text(text)
 
     def get_frame_from_mouse(self, x):
         rel_x = x - SEEK_BAR_X
@@ -165,9 +173,9 @@ class F1Dashboard(arcade.Window):
         """Builds enhanced context for the AI with telemetry and history"""
         current_frame = self.frames[self._frame_index_int]
         
-        # Update chat window with selected driver name
+        # Update sidebar with selected driver name
         if self.selected_driver in self.driver_metadata:
-            self.chat_window.selected_driver_name = self.driver_metadata[self.selected_driver].name
+            self.sidebar.selected_driver_name = self.driver_metadata[self.selected_driver].name
         
         # Build enhanced context with history
         # Get a window of recent frames (last 500 frames = ~50 seconds at 10Hz)
@@ -193,11 +201,11 @@ class F1Dashboard(arcade.Window):
         )
         
         for alert in alerts:
-            self.chat_window.add_proactive_alert(alert)
+            self.sidebar.add_proactive_alert(alert)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # 0. Check Chat Window (quick action buttons)
-        if self.chat_window.on_mouse_press(x, y):
+        # 0. Check Sidebar (tabs and buttons)
+        if self.sidebar.on_mouse_press(x, y):
             return
         
         # 1. Check Seek Bar
@@ -225,5 +233,5 @@ class F1Dashboard(arcade.Window):
                 self.selected_driver = clicked_driver
     
     def on_mouse_motion(self, x, y, dx, dy):
-        """Track mouse motion for chat window button hover effects"""
-        self.chat_window.on_mouse_motion(x, y)
+        """Track mouse motion for sidebar effects"""
+        self.sidebar.on_mouse_motion(x, y)

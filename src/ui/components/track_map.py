@@ -10,10 +10,12 @@ class TrackMap:
         self.map_label = arcade.Text("LIVE TRACK MAP", MAP_START_X, MAP_START_Y + MAP_BOX_H + 5, ASH_GREY, 10, font_name="Arial")
         self.status_text = arcade.Text("", MAP_START_X + 200, MAP_START_Y + 20, WHITE, 16, bold=True, anchor_x="center")
         
-        # Pre-initialize car map labels
+        # Pre-initialize car map labels and colors
         self.map_labels = {}
+        self.driver_colors = {}
         for drv, meta in driver_metadata.items():
             self.map_labels[drv] = arcade.Text(str(meta.abb), 0, 0, WHITE, 8)
+            self.driver_colors[drv] = arcade.types.Color.from_hex_string(meta.color)
             
         self.scaled_track = []
         self._cache_track()
@@ -73,7 +75,7 @@ class TrackMap:
             meta = self.driver_metadata[drv]
             
             mx, my = self.map_to_box(telemetry.x, telemetry.y)
-            color = arcade.types.Color.from_hex_string(meta.color)
+            color = self.driver_colors.get(drv, WHITE)
             arcade.draw_circle_filled(mx, my, 5, color)
             
             label = self.map_labels[drv]

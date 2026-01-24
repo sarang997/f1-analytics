@@ -5,8 +5,10 @@ class Leaderboard:
     def __init__(self, driver_metadata):
         self.driver_metadata = driver_metadata
         self.lb_texts = {}
+        self.driver_colors = {}
         for drv, meta in self.driver_metadata.items():
             self.lb_texts[drv] = arcade.Text("", 30, 0, WHITE, 12)
+            self.driver_colors[drv] = arcade.types.Color.from_hex_string(meta.color)
         
         self.header = arcade.Text("POS   DRIVER     GAP", 20, SCREEN_HEIGHT - 40, WHITE, 14, bold=True)
         self.sorted_drivers = []
@@ -44,7 +46,7 @@ class Leaderboard:
             arcade.draw_rect_filled(arcade.rect.XYWH(LEADERBOARD_WIDTH/2, y_pos + 5, LEADERBOARD_WIDTH - 10, 25), ITEM_BG_COLOR)
             
             # Team color stripe
-            color = arcade.types.Color.from_hex_string(meta.color)
+            color = self.driver_colors.get(drv, WHITE)
             arcade.draw_lrbt_rectangle_filled(5, 15, y_pos - 8, y_pos + 18, color)
             
             # Tyre Compound Indicator
