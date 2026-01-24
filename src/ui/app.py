@@ -8,13 +8,12 @@ from src.utils.config import (
 )
 from src.ui.components.leaderboard import Leaderboard
 from src.ui.components.track_map import TrackMap
-from src.ui.components.leaderboard import Leaderboard
-from src.ui.components.track_map import TrackMap
 from src.ui.components.telemetry_hud import TelemetryHUD
 from src.ui.components.race_control_log import RaceControlLog
 from src.ui.components.chat_window import ChatWindow
 from src.utils.ai_client import AIClient
 from src.utils.context_builder import build_race_context
+from src.utils.proactive_engineer import ProactiveEngineer
 from src.processor.data_manager import DataManager
 
 class F1Dashboard(arcade.Window):
@@ -50,15 +49,17 @@ class F1Dashboard(arcade.Window):
         # 3. Components
         self.leaderboard = Leaderboard(self.driver_metadata)
         self.track_map = TrackMap(self.driver_metadata, self.track_line, bounds)
-        self.track_map = TrackMap(self.driver_metadata, self.track_line, bounds)
         self.telemetry_hud = TelemetryHUD(self.driver_metadata)
         self.rc_log = RaceControlLog(self.data.race_control_messages)
         
-        # AI Engineer
+        # AI Engineer with Proactive Intelligence
         self.ai_client = AIClient()
         self.chat_window = ChatWindow(self.ai_client)
-        # Verify bindings
+        self.proactive_engineer = ProactiveEngineer()
+        
+        # Wire up chat window
         self.chat_window.context_provider = self.get_current_context
+        self.chat_window.selected_driver_name = None  # Will be updated each frame
         
         # 4. Playback State
         self.selected_driver = first_driver
@@ -67,11 +68,14 @@ class F1Dashboard(arcade.Window):
         self.playback_speed = 1.0
         self.paused = False
         
-        # 5. UI State
+        # 5. Proactive alert tracking
+        self.last_proactive_check_lap = 0
+        
+        # 6. UI State
         self.blink_timer = 0.0
         self.show_blink = True
         
-        # 6. Global Text Objects
+        # 7. Global Text Objects
         self.clock_text = arcade.Text("", 320, SCREEN_HEIGHT - 40, WHITE, 20, bold=True)
         self.speed_text = arcade.Text("", 320, SCREEN_HEIGHT - 70, (255, 69, 0), 12) # RED_ORANGE
         self.lap_text = arcade.Text("", 320, SCREEN_HEIGHT - 100, ASH_GREY, 14, bold=True)
@@ -82,7 +86,6 @@ class F1Dashboard(arcade.Window):
         
         # Draw Components
         self.leaderboard.draw(current_frame)
-        self.track_map.draw(current_frame, self.show_blink)
         self.track_map.draw(current_frame, self.show_blink)
         self.telemetry_hud.draw(current_frame, self.selected_driver)
         self.rc_log.draw(current_frame.t)
@@ -123,6 +126,12 @@ class F1Dashboard(arcade.Window):
         if self.frame_index >= len(self.frames) - 1:
             self.frame_index = float(len(self.frames) - 1)
             self.paused = True
+        
+        # Proactive Alerts (check every lap, not every frame)
+        current_frame = self.frames[self._frame_index_int]
+        if current_frame.lap != self.last_proactive_check_lap and current_frame.lap > 2:
+            self.last_proactive_check_lap = current_frame.lap
+            self._check_proactive_alerts(current_frame)
 
     @property
     def frame_index(self): return self._frame_index
@@ -153,14 +162,44 @@ class F1Dashboard(arcade.Window):
         return progress * (len(self.frames) - 1)
 
     def get_current_context(self):
-        """Builds context for the AI"""
+        """Builds enhanced context for the AI with telemetry and history"""
         current_frame = self.frames[self._frame_index_int]
-        # We need sorted drivers from leaderboard, but accessing it directly from LB component logic is messy
-        # Better to re-sort or rely on LB caching if public.
-        # Leaderboard exposes sorted_drivers.
-        return build_race_context(current_frame, self.driver_metadata, self.leaderboard.sorted_drivers)
+        
+        # Update chat window with selected driver name
+        if self.selected_driver in self.driver_metadata:
+            self.chat_window.selected_driver_name = self.driver_metadata[self.selected_driver].name
+        
+        # Build enhanced context with history
+        # Get a window of recent frames (last 500 frames = ~50 seconds at 10Hz)
+        history_start = max(0, self._frame_index_int - 500)
+        frames_history = self.frames[history_start:self._frame_index_int + 1]
+        
+        return build_race_context(
+            current_frame, 
+            self.driver_metadata, 
+            self.leaderboard.sorted_drivers,
+            selected_driver=self.selected_driver,
+            frames_history=frames_history,
+            total_laps=self.total_laps
+        )
+    
+    def _check_proactive_alerts(self, current_frame):
+        """Check for proactive alerts and send to chat"""
+        alerts = self.proactive_engineer.analyze_frame(
+            current_frame,
+            self.selected_driver,
+            self.leaderboard.sorted_drivers,
+            frames_history=self.frames[max(0, self._frame_index_int - 500):self._frame_index_int + 1]
+        )
+        
+        for alert in alerts:
+            self.chat_window.add_proactive_alert(alert)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # 0. Check Chat Window (quick action buttons)
+        if self.chat_window.on_mouse_press(x, y):
+            return
+        
         # 1. Check Seek Bar
         if SEEK_BAR_X <= x <= SEEK_BAR_X + SEEK_BAR_WIDTH and SEEK_BAR_Y - 20 <= y <= SEEK_BAR_Y + 20:
             self.frame_index = self.get_frame_from_mouse(x)
@@ -184,3 +223,7 @@ class F1Dashboard(arcade.Window):
             clicked_driver = self.leaderboard.get_driver_at_pos(x, y)
             if clicked_driver:
                 self.selected_driver = clicked_driver
+    
+    def on_mouse_motion(self, x, y, dx, dy):
+        """Track mouse motion for chat window button hover effects"""
+        self.chat_window.on_mouse_motion(x, y)
